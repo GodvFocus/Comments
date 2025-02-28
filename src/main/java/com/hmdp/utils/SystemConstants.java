@@ -7,4 +7,5 @@ public class SystemConstants {
     public static final int MAX_PAGE_SIZE = 10;
     public static final String CODE_ERROR = "验证码错误";
     public static final String PHONE_ERROR = "手机号错误";
+    public static final String SHOP_NOT_EXIST = "店铺不存在";
 }
