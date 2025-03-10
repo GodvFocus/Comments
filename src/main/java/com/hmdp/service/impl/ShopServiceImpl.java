@@ -1,12 +1,13 @@
 package com.hmdp.service.impl;
 
-import cn.hutool.core.util.StrUtil;
-import cn.hutool.json.JSONUtil;
+
 import com.hmdp.dto.Result;
+import com.hmdp.entity.RedisData;
 import com.hmdp.entity.Shop;
 import com.hmdp.mapper.ShopMapper;
 import com.hmdp.service.IShopService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.hmdp.utils.CacheClient;
 import com.hmdp.utils.RedisConstants;
 import com.hmdp.utils.SystemConstants;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,8 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
+    @Resource
+    private CacheClient cacheClient;
     /**
      * 根据id查询商铺信息
      * @param id
@@ -39,33 +42,18 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
      */
     @Override
     public Result queryById(Long id) {
-        String key = RedisConstants.CACHE_SHOP_KEY + id;
-        // 1. 从redis查询缓存
-        String jsonShop = stringRedisTemplate.opsForValue().get(key);
-        // 2. 如果存在，直接返回
-        if(StrUtil.isNotBlank(jsonShop)){
-            // 空字符串也会返回false
-            Shop shop = JSONUtil.toBean(jsonShop, Shop.class);
-            return Result.ok(shop);
-        }
-        if(jsonShop != null){
-            // 缓存内没有通过isNotBlank，但是非null
-            return Result.fail(SystemConstants.SHOP_NOT_EXIST);
-        }
+//        避免缓存穿透
+//        Shop shop = cacheClient.getCacheWithNull(RedisConstants.CACHE_SHOP_KEY, id, Shop.class, this::getById, RedisConstants.CACHE_SHOP_TTL, TimeUnit.SECONDS);
 
-        // 3. 不存在，根据id查询数据库
-        Shop shop = getById(id);
-        // 4. 数据库中未找到直接返回
-        if(shop == null){
-            stringRedisTemplate.opsForValue().set(key, "", RedisConstants.CACHE_NULL_TTL, TimeUnit.MINUTES);
-            return Result.fail(SystemConstants.SHOP_NOT_EXIST);
-        }
-        // 5. 写入redis
-        stringRedisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(shop));
-        stringRedisTemplate.expire(key, RedisConstants.CACHE_SHOP_TTL, TimeUnit.MINUTES);
-        // 6. 返回
+        // 逻辑过期方式查询
+        Shop shop = cacheClient.getCacheWithLogic(RedisConstants.CACHE_SHOP_KEY, id, Shop.class, this::getById, RedisConstants.CACHE_SHOP_TTL, TimeUnit.SECONDS);
+
+        if(shop == null)
+            return Result.fail("商铺不存在");
         return Result.ok(shop);
     }
+
+
 
     /**
      * 更新商铺信息
