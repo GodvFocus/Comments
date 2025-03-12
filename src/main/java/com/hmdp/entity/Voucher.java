@@ -69,7 +69,7 @@ public class Voucher implements Serializable {
     private Integer type;
 
     /**
-     * 优惠券类型
+     * 优惠券状态（1上架 2下架 3过期）
      */
     private Integer status;
     /**

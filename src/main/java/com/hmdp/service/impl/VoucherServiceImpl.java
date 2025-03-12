@@ -30,12 +30,14 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
     @Override
     public Result queryVoucherOfShop(Long shopId) {
         // 查询优惠券信息
+        // 获取当前 Service 实现类所关联的 Mapper 接口实例
         List<Voucher> vouchers = getBaseMapper().queryVoucherOfShop(shopId);
         // 返回结果
         return Result.ok(vouchers);
     }
 
     @Override
+    // 涉及多张表的查询加上Transactional
     @Transactional
     public void addSeckillVoucher(Voucher voucher) {
         // 保存优惠券
