@@ -77,7 +77,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     }
 
     private void handlerVoucherOrder(VoucherOrder voucherOrder) throws InterruptedException {
-        /*Long userId = voucherOrder.getUserId();
+        Long userId = voucherOrder.getUserId();
         // 对用户id上锁
         RLock lock = redissonClient.getLock("lock:order:" + userId);
         // 1.尝试获取锁
@@ -93,8 +93,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         } finally {
             // 释放锁
             lock.unlock();
-        }*/
-        proxy.createVoucherOrder(voucherOrder);
+        }
     }
 
     /**
