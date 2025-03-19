@@ -50,7 +50,10 @@ public class UploadController {
         // 生成目录
         String name = UUID.randomUUID().toString();
         int hash = name.hashCode();
+        // 简单负载均衡
+        // 将hash值低4位作为索引1
         int d1 = hash & 0xF;
+        // 将hash值右移4位，将低4位作为索引2
         int d2 = (hash >> 4) & 0xF;
         // 判断目录是否存在
         File dir = new File(SystemConstants.IMAGE_UPLOAD_DIR, StrUtil.format("/blogs/{}/{}", d1, d2));
