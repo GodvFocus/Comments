@@ -4,21 +4,25 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hmdp.dto.Result;
+import com.hmdp.dto.ScrollResult;
 import com.hmdp.dto.UserDTO;
 import com.hmdp.entity.Blog;
+import com.hmdp.entity.Follow;
 import com.hmdp.entity.User;
 import com.hmdp.mapper.BlogMapper;
 import com.hmdp.service.IBlogService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.hmdp.service.IFollowService;
 import com.hmdp.service.IUserService;
 import com.hmdp.utils.RedisConstants;
 import com.hmdp.utils.SystemConstants;
 import com.hmdp.utils.UserHolder;
-import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -39,6 +43,8 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
     private IUserService userService;
     @Resource
     private StringRedisTemplate stringRedisTemplate;
+    @Resource
+    private IFollowService followService;
 
     @Override
     public Result queryMyBlog(Integer current) {
@@ -147,6 +153,77 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
                 .collect(Collectors.toList());
         // 3. 返回
         return Result.ok(userDTOList);
+    }
+
+    /**
+     * 保存探店博文
+     * @param blog
+     * @return
+     */
+    @Override
+    public Result saveBlog(Blog blog) {
+        // 获取登录用户
+        UserDTO user = UserHolder.getUser();
+        blog.setUserId(user.getId());
+        // 保存探店博文
+        boolean isSuccess = save(blog);
+        if(!isSuccess){
+            return Result.fail("新增笔记失败");
+        }
+        // 查询笔记作者的所有粉丝
+        List<Follow> followers = followService.query().eq("follow_user_id", user.getId()).list();
+        // 推送给粉丝
+        for (Follow follower : followers) {
+            Long userId = follower.getUserId();
+            String key = RedisConstants.FEED_KEY + userId;
+            stringRedisTemplate.opsForZSet().add(key, blog.getId().toString(), System.currentTimeMillis());
+        }
+        // 返回id
+        return Result.ok(blog.getId());
+    }
+
+    @Override
+    public Result queryscrollBlog(Long maxTime, Integer offset) {
+        // 1. 获取当前用户
+        Long userId = UserHolder.getUser().getId();
+        // 2. 查收件箱
+        String key = RedisConstants.FEED_KEY + userId;
+        // ZREVRANGEBYSCORE key max min LIMIT offset count
+        Set<ZSetOperations.TypedTuple<String>> tuples = stringRedisTemplate.opsForZSet()
+                .reverseRangeByScoreWithScores(key, 0, maxTime, offset, 2);
+        if(tuples == null || tuples.isEmpty()){
+            return Result.ok();
+        }
+        // 3. 解析blogId maxTime offset
+        List<Long> ids = new ArrayList<>(tuples.size());
+        long minTime = 0;
+        int offsetNum = 1;
+        for (ZSetOperations.TypedTuple<String> tuple : tuples) {
+            ids.add(Long.valueOf(tuple.getValue()));
+            long time = tuple.getScore().longValue();
+            if(time == minTime){
+                offsetNum++;
+            }
+            else {
+                minTime = time;
+                offsetNum = 1;
+            }
+        }
+        // 4. 根据id查询blog
+        String idsStr = StrUtil.join(",", ids);
+        List<Blog> blogList = query()
+                .in("id", ids)
+                .last("order by field(id," + idsStr + ")").list();
+        for (Blog blog : blogList) {
+            getUserById(blog);
+            isLiked(blog);
+        }
+        // 5. 返回
+        ScrollResult scrollResult = new ScrollResult();
+        scrollResult.setList(blogList);
+        scrollResult.setOffset(offsetNum);
+        scrollResult.setMinTime(minTime);
+        return Result.ok(scrollResult);
     }
 
     /**
