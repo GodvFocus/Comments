@@ -14,35 +14,33 @@
     - 商家信息展示
     - 商家搜索
     - 商家分类
+    - 商家排序
 3. **点评管理**
     - 用户发表点评
+    - 用户关注
     - 点评点赞与回复
 4. **系统管理**
     - 数据统计
 
 ### 项目结构
 ```
-黑马点评项目
+HMComments
 ├── src
-│   ├── main
-│   │   ├── java
-│   │   │   └── com.hmdp
-│   │   │       ├── config
-│   │   │       ├── controller
-│   │   │       ├── dto
-│   │   │       ├── interceptor
-│   │   │       ├── service
-│   │   │       ├── mapper
-│   │   │       ├── entity
-│   │   │       └── utils
-│   │   └── resources
-│   │       ├── mapper
-│   │       ├── static
-│   │       └── templates
-│   └── test
-│       └── java
-│           └── com.hmdp
-│               └── test
+│   └── main
+│      ├── java
+│      │   └── com.hmdp
+│      │       ├── config
+│      │       ├── controller
+│      │       ├── dto
+│      │       ├── interceptor
+│      │       ├── service
+│      │       ├── mapper
+│      │       ├── entity
+│      │       └── utils
+│      └── resources
+│          ├── mapper
+│          └── db
+│
 ├── pom.xml
 └── README.md
 └── .gitignore
